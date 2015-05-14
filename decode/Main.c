@@ -18,17 +18,23 @@ struct
 	unsigned out2 : 1;
 	unsigned out3 : 1;
 } status;
-
 void encode(void);
 int binary_decimal(char *str);
 char *decimal_binary(int n, int size);
-void split(unsigned int code, int bit, int prevDiff);
-int main(void)
+int main(int argc, char* argv[])
 {
-	char bincode[20];
-	printf("Binary code:   ");
-	scanf("%s", &bincode[0]);
-	encodedData = binary_decimal(bincode);
+	if(argc == 1)
+	{
+		char bincode[21];
+		printf("Enter input code:   ");
+		scanf("%s", &bincode[0]);
+		encodedData = binary_decimal(bincode);
+	}
+	else
+	{
+		printf("Decoding: %s \n", argv[1]);
+		encodedData = binary_decimal(argv[1]);
+	}
 	/*encodedData = 0x179C7F;*/
 	for (int i = 0; i < 128; i++)
 	{
@@ -50,7 +56,6 @@ int main(void)
 	t = clock();
 	for (int i = 0; i < 10000; i++)
 	{
-
 	minDiff = 21;
 	for (int i = 0; i < 128; i++)
 	{
@@ -67,28 +72,13 @@ int main(void)
 			minDiffIndex = i;
 		}
 	}
-
 	}
 	t = clock() - t;
-	printf("It took me %d clicks (%f seconds).\n",
+	printf("Bruteforce result: %d clicks (%f seconds).\n",
 	(int)t, ((double)t) / CLOCKS_PER_SEC);
-
 	printf("Diff: %d, Code: %s, Decoded: %s \n", minDiff, decimal_binary(combinations[minDiffIndex], 21), decimal_binary(minDiffIndex,7));
-	/*----------------------------------------------------*/
-	t = clock();
-	for (int i = 0; i < 10000; i++)
-	{
-
-	minDiff = 21;
-	split(0, -1, 0);
-
-	}
-	t = clock() - t;
-	printf("It took me %d clicks (%f seconds).\n",
-		(int)t, ((double)t) / CLOCKS_PER_SEC);
-
-	printf("Diff: %d, Code: %s, Decoded: %s \n", minDiff, decimal_binary(combinations[minDiffIndex], 21), decimal_binary(minDiffIndex, 7));
-	scanf("%d", encodedData);
+	printf("Press any key to exit...\n");  
+	getchar(); 
 }
 
 void encode(void)
@@ -100,15 +90,27 @@ void encode(void)
 	status.reg1 = status.input;
 }
 int binary_decimal(char *str)
-
 {
 	int decimal = 0;
-	for (int i = 0; i < 21; i++)
+	int i;
+	while (str[i] != '\0')
 	{
+		if(str[i] != '1' && str[i] != '0')
+		{
+			printf("ERROR: Input must be in binary format.\n");
+			exit(0);
+		}
 		decimal += (str[i] - '0')*(int)pow(2, 20 - i);
+		i++;
+	}
+	if(i != 21)
+	{
+		printf("ERROR: Input must be 21 digits in length.\n");
+		exit(0);
 	}
 	return decimal;
 }
+
 char *decimal_binary(int n, int size)
 {
 	int c, d, count;
@@ -128,35 +130,5 @@ char *decimal_binary(int n, int size)
 		count++;
 	}
 	*(pointer + count) = '\0';
-
 	return  pointer;
 }
-void split(unsigned int code, int bit, int prevDiff)
-{
-	int tmp = encodedData ^ combinations[code];
-	tmp >>= (18 - bit * 3);
-	for (int i = 0; i < 3; i++)
-	{
-		prevDiff += tmp & 1;
-		tmp >>= 1;
-	}
-	if (prevDiff > 6 || prevDiff > minDiff) /*отсекает лишние ветки*/
-		return;
-	if (bit == 6)
-	{
-		if (minDiff > prevDiff)
-		{
-			minDiff = prevDiff;
-			minDiffIndex = code;
-		}
-		return;
-	}
-
-	++bit;
-	code ^= 1 << bit;
-	split(code, bit, prevDiff);
-	code ^= 1 << bit;
-	split(code, bit, prevDiff);
-
-}
-
