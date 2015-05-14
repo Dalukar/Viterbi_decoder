@@ -19,13 +19,15 @@ struct
 	unsigned out3 : 1;
 } status;
 void encode(void);
+void brute_decode(void);
+void generate_combinations(void);
 int binary_decimal(char *str);
 char *decimal_binary(int n, int size);
 int main(int argc, char* argv[])
 {
 	if(argc == 1)
 	{
-		char bincode[21];
+		char bincode[22];
 		printf("Enter input code:   ");
 		scanf("%s", &bincode[0]);
 		encodedData = binary_decimal(bincode);
@@ -36,6 +38,33 @@ int main(int argc, char* argv[])
 		encodedData = binary_decimal(argv[1]);
 	}
 	/*encodedData = 0x179C7F;*/
+	
+	generate_combinations();
+	clock_t t;
+	t = clock();
+	for (int i = 0; i < 10000; i++)
+	{
+		brute_decode();
+	}
+	t = clock() - t;
+	printf("Bruteforce result: %d clicks (%f seconds).\n",
+	(int)t, ((double)t) / CLOCKS_PER_SEC);
+	printf("Diff: %d, Code: %s, Decoded: %s \n", minDiff, decimal_binary(combinations[minDiffIndex], 21), decimal_binary(minDiffIndex,7));
+	printf("Press any key to exit...\n");  
+	getch();
+}
+
+void encode(void)
+{
+	status.out1 = status.reg1 ^ status.input;
+	status.out2 = status.reg2 ^ status.input;
+	status.out3 = status.reg1 ^ status.input;
+	status.reg2 = status.reg1;
+	status.reg1 = status.input;
+}
+
+void generate_combinations(void)
+{
 	for (int i = 0; i < 128; i++)
 	{
 		originalData = i;
@@ -44,18 +73,17 @@ int main(int argc, char* argv[])
 		for (int j = 0; j < 7; j++)
 		{
 			status.input = (originalData)& 1;
-			originalData >>=  1;
+			originalData >>= 1;
 			encode();
 			combinations[i] = (combinations[i] << 1) + status.out1;
 			combinations[i] = (combinations[i] << 1) + status.out2;
 			combinations[i] = (combinations[i] << 1) + status.out3;
 		}
 	}
+}
 
-	clock_t t;
-	t = clock();
-	for (int i = 0; i < 10000; i++)
-	{
+void brute_decode(void)
+{
 	minDiff = 21;
 	for (int i = 0; i < 128; i++)
 	{
@@ -72,27 +100,12 @@ int main(int argc, char* argv[])
 			minDiffIndex = i;
 		}
 	}
-	}
-	t = clock() - t;
-	printf("Bruteforce result: %d clicks (%f seconds).\n",
-	(int)t, ((double)t) / CLOCKS_PER_SEC);
-	printf("Diff: %d, Code: %s, Decoded: %s \n", minDiff, decimal_binary(combinations[minDiffIndex], 21), decimal_binary(minDiffIndex,7));
-	printf("Press any key to exit...\n");  
-	getchar(); 
 }
 
-void encode(void)
-{
-	status.out1 = status.reg1 ^ status.input;
-	status.out2 = status.reg2 ^ status.input;
-	status.out3 = status.reg1 ^ status.input;
-	status.reg2 = status.reg1;
-	status.reg1 = status.input;
-}
 int binary_decimal(char *str)
 {
 	int decimal = 0;
-	int i;
+	int i = 0;
 	while (str[i] != '\0')
 	{
 		if(str[i] != '1' && str[i] != '0')
