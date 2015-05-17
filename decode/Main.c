@@ -4,24 +4,11 @@
 #include <stdlib.h>
 #include <time.h>
 
-unsigned int originalData;
 unsigned int encodedData;
-unsigned int combinations[128];
-int minDiffIndex;
-int minDiff;
-struct 
-{
-	unsigned input : 1;
-	unsigned reg1 : 1;
-	unsigned reg2 : 1;
-	unsigned out1 : 1;
-	unsigned out2 : 1;
-	unsigned out3 : 1;
-} status;
-void encode(void);
-void brute_decode(void);
-void generate_combinations(void);
-int binary_decimal(char *str);
+unsigned int result;
+int decode(int code); /*Функция декодирования*/
+int encode(int); /*Функция кодирования*/
+int binary_decimal(char *str); 
 char *decimal_binary(int n, int size);
 int main(int argc, char* argv[])
 {
@@ -39,67 +26,129 @@ int main(int argc, char* argv[])
 	}
 	/*encodedData = 0x179C7F;*/
 	
-	generate_combinations();
 	clock_t t;
 	t = clock();
 	for (int i = 0; i < 10000; i++)
 	{
-		brute_decode();
+		result = decode(encodedData);
 	}
 	t = clock() - t;
-	printf("Bruteforce result: %d clicks (%f seconds).\n",
+	printf("10000x decode cycles time: %d clicks (%f seconds).\n",
 	(int)t, ((double)t) / CLOCKS_PER_SEC);
-	printf("Diff: %d, Code: %s, Decoded: %s \n", minDiff, decimal_binary(combinations[minDiffIndex], 21), decimal_binary(minDiffIndex,7));
+	printf("Code: %s, Decoded: %s \n", decimal_binary(encode(result), 21), decimal_binary(result, 7));
 	printf("Press any key to exit...\n");  
 	getch();
 }
 
-void encode(void)
+int encode(int code)
 {
-	status.out1 = status.reg1 ^ status.input;
-	status.out2 = status.reg2 ^ status.input;
-	status.out3 = status.reg1 ^ status.input;
-	status.reg2 = status.reg1;
-	status.reg1 = status.input;
+	struct
+	{
+		unsigned input : 1;
+		unsigned reg1 : 1;
+		unsigned reg2 : 1;
+		unsigned out1 : 1;
+		unsigned out2 : 1;
+		unsigned out3 : 1;
+	} status;
+
+	int encoded = 0;
+	status.reg2 = 0;
+	status.reg1 = 0;
+	for (int j = 0; j < 7; j++)
+	{
+		status.input = (code)& 1;
+		code >>= 1;
+
+		status.out1 = status.reg1 ^ status.input;
+		status.out2 = status.reg2 ^ status.input;
+		status.out3 = status.reg1 ^ status.input;
+		status.reg2 = status.reg1;
+		status.reg1 = status.input;
+
+		encoded = (encoded << 1) + status.out1;
+		encoded = (encoded << 1) + status.out2;
+		encoded = (encoded << 1) + status.out3;
+	}
+	return encoded;
+
 }
 
-void generate_combinations(void)
+int decode(int code)
 {
-	for (int i = 0; i < 128; i++)
+	/*Структура узла состояния*/
+	struct{
+		unsigned isActive : 1;
+		int diff;
+		int code;
+	}nodes[8][2][2];
+	/*Обнуляем узлы*/
+	memset(nodes, 0, sizeof(nodes));
+	nodes[0][0][0].isActive = 1;
+	/*Всякие переменные, которые потом пригодятся*/
+	int diffcode = 0;
+	int possibleCode = 0;
+	int nextNode = 0;
+	int nextDiff = 0;
+	/*Проход по 7 битам*/
+	for (int i = 0; i < 7; i++)
 	{
-		originalData = i;
-		status.reg2 = 0;
-		status.reg1 = 0;
-		for (int j = 0; j < 7; j++)
+		/*Проход по состояниям регистров*/
+		for (int r1 = 0; r1 < 2; r1++)
 		{
-			status.input = (originalData)& 1;
-			originalData >>= 1;
-			encode();
-			combinations[i] = (combinations[i] << 1) + status.out1;
-			combinations[i] = (combinations[i] << 1) + status.out2;
-			combinations[i] = (combinations[i] << 1) + status.out3;
+			for (int r2 = 0; r2 < 2; r2++)
+			{
+				/*Если состояние было достигнуто на прошлом шаге*/
+				if (nodes[i][r1][r2].isActive)
+				{
+					/*Рассматриваем вариант сигнала 1 или 0 на входе*/
+					for (int bit = 0; bit < 2; bit++)
+					{
+						/*Набираем предположительно закодированную комбинацию*/
+						possibleCode = 0;
+						possibleCode ^= (r1 ^ bit) << 2;
+						possibleCode ^= (r2 ^ bit) << 1;
+						possibleCode ^= (r1 ^ bit);
+						/*Расчитываем разницу */
+						diffcode = possibleCode ^ (code >> (18 - i * 3));
+						nextNode = i + 1;
+						nextDiff = nodes[i][r1][r2].diff;
+						for (int k = 0; k < 3; k++)
+						{
+							nextDiff += diffcode & 1;
+							diffcode >>= 1;
+						}
+						/*Проверяем значение разницы в узле и записываем*/
+						if (nodes[nextNode][bit][r1].isActive == 0)
+						{
+							nodes[nextNode][bit][r1].code = (nodes[i][r1][r2].code << 1) + bit;
+							nodes[nextNode][bit][r1].diff = nextDiff;
+							nodes[nextNode][bit][r1].isActive = 1;
+						}
+						else if (nodes[nextNode][bit][r1].diff > nextDiff)
+						{
+							nodes[nextNode][bit][r1].code = (nodes[i][r1][r2].code << 1) + bit;
+							nodes[nextNode][bit][r1].diff = nextDiff;
+						}
+					}
+				}
+			}
 		}
 	}
-}
-
-void brute_decode(void)
-{
-	minDiff = 21;
-	for (int i = 0; i < 128; i++)
+	/*Находим наименьшую разницу и возвращаем код*/
+	diffcode = 21;
+	for (int r1 = 0; r1 < 2; r1++)
 	{
-		int diff = 0;
-		int diffcode = encodedData ^ combinations[i];
-		for (int j = 0; j < 21; j++)
+		for (int r2 = 0; r2 < 2; r2++)
 		{
-			diff += diffcode & 1;
-			diffcode >>= 1;
-		}
-		if (diff <= minDiff)
-		{
-			minDiff = diff;
-			minDiffIndex = i;
+			if (nodes[7][r1][r2].diff < diffcode)
+			{
+				diffcode = nodes[7][r1][r2].diff;
+				possibleCode = nodes[7][r1][r2].code;
+			}
 		}
 	}
+	return possibleCode;
 }
 
 int binary_decimal(char *str)
@@ -145,3 +194,4 @@ char *decimal_binary(int n, int size)
 	*(pointer + count) = '\0';
 	return  pointer;
 }
+
