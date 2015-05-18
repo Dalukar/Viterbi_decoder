@@ -3,6 +3,7 @@
 #include <math.h>
 #include <stdlib.h>
 #include <time.h>
+#include <string.h>
 
 unsigned int encodedData;
 unsigned int result;
@@ -28,16 +29,16 @@ int main(int argc, char* argv[])
 	
 	clock_t t;
 	t = clock();
-	for (int i = 0; i < 10000; i++)
+	for (int i = 0; i < 100000; i++)
 	{
 		result = decode(encodedData);
 	}
 	t = clock() - t;
-	printf("10000x decode cycles time: %d clicks (%f seconds).\n",
+	printf("100000x decode cycles time: %d clicks (%f seconds).\n",
 	(int)t, ((double)t) / CLOCKS_PER_SEC);
 	printf("Code: %s, Decoded: %s \n", decimal_binary(encode(result), 21), decimal_binary(result, 7));
 	printf("Press any key to exit...\n");  
-	getch();
+	//getch();
 }
 
 int encode(int code)
@@ -47,9 +48,6 @@ int encode(int code)
 		unsigned input : 1;
 		unsigned reg1 : 1;
 		unsigned reg2 : 1;
-		unsigned out1 : 1;
-		unsigned out2 : 1;
-		unsigned out3 : 1;
 	} status;
 
 	int encoded = 0;
@@ -57,18 +55,14 @@ int encode(int code)
 	status.reg1 = 0;
 	for (int j = 0; j < 7; j++)
 	{
-		status.input = (code)& 1;
-		code >>= 1;
 
-		status.out1 = status.reg1 ^ status.input;
-		status.out2 = status.reg2 ^ status.input;
-		status.out3 = status.reg1 ^ status.input;
+		status.input = ((code)& 64) >> 6;
+		code <<= 1;
+		encoded = (encoded << 1) + status.reg1 ^ status.input;
+		encoded = (encoded << 1) + status.reg2 ^ status.input;
+		encoded = (encoded << 1) + status.reg1 ^ status.input;
 		status.reg2 = status.reg1;
 		status.reg1 = status.input;
-
-		encoded = (encoded << 1) + status.out1;
-		encoded = (encoded << 1) + status.out2;
-		encoded = (encoded << 1) + status.out3;
 	}
 	return encoded;
 
