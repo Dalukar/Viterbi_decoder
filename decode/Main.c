@@ -38,7 +38,7 @@ int main(int argc, char* argv[])
 	(int)t, ((double)t) / CLOCKS_PER_SEC);
 	printf("Code: %s, Decoded: %s \n", decimal_binary(encode(result), 21), decimal_binary(result, 7));
 	printf("Press any key to exit...\n");  
-	//getch();
+	getch();
 }
 
 int encode(int code)
