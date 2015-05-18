@@ -49,13 +49,11 @@ int encode(int code)
 		unsigned reg1 : 1;
 		unsigned reg2 : 1;
 	} status;
-
 	int encoded = 0;
 	status.reg2 = 0;
 	status.reg1 = 0;
 	for (int j = 0; j < 7; j++)
 	{
-
 		status.input = ((code)& 64) >> 6;
 		code <<= 1;
 		encoded = (encoded << 1) + status.reg1 ^ status.input;
@@ -65,13 +63,12 @@ int encode(int code)
 		status.reg1 = status.input;
 	}
 	return encoded;
-
 }
 
 int decode(int code)
 {
 	/*Структура узла состояния*/
-	struct{
+	struct node{
 		unsigned isActive : 1;
 		int diff;
 		int code;
@@ -82,8 +79,9 @@ int decode(int code)
 	/*Всякие переменные, которые потом пригодятся*/
 	int diffcode = 0;
 	int possibleCode = 0;
-	int nextNode = 0;
 	int nextDiff = 0;
+	struct node *nextNodePtr;
+	struct node *nodePtr;
 	/*Проход по 7 битам*/
 	for (int i = 0; i < 7; i++)
 	{
@@ -92,8 +90,9 @@ int decode(int code)
 		{
 			for (int r2 = 0; r2 < 2; r2++)
 			{
+				nodePtr = &nodes[i][r1][r2];
 				/*Если состояние было достигнуто на прошлом шаге*/
-				if (nodes[i][r1][r2].isActive)
+				if (nodePtr->isActive)
 				{
 					/*Рассматриваем вариант сигнала 1 или 0 на входе*/
 					for (int bit = 0; bit < 2; bit++)
@@ -105,24 +104,19 @@ int decode(int code)
 						possibleCode ^= (r1 ^ bit);
 						/*Расчитываем разницу */
 						diffcode = possibleCode ^ (code >> (18 - i * 3));
-						nextNode = i + 1;
-						nextDiff = nodes[i][r1][r2].diff;
+						nextDiff = nodePtr->diff;
 						for (int k = 0; k < 3; k++)
 						{
 							nextDiff += diffcode & 1;
 							diffcode >>= 1;
 						}
 						/*Проверяем значение разницы в узле и записываем*/
-						if (nodes[nextNode][bit][r1].isActive == 0)
+						nextNodePtr = &nodes[i + 1][bit][r1];
+						if (nextNodePtr->isActive == 0 || nextNodePtr->diff > nextDiff)
 						{
-							nodes[nextNode][bit][r1].code = (nodes[i][r1][r2].code << 1) + bit;
-							nodes[nextNode][bit][r1].diff = nextDiff;
-							nodes[nextNode][bit][r1].isActive = 1;
-						}
-						else if (nodes[nextNode][bit][r1].diff > nextDiff)
-						{
-							nodes[nextNode][bit][r1].code = (nodes[i][r1][r2].code << 1) + bit;
-							nodes[nextNode][bit][r1].diff = nextDiff;
+							nextNodePtr->code = (nodePtr->code << 1) + bit;
+							nextNodePtr->diff = nextDiff;
+							nextNodePtr->isActive = 1;
 						}
 					}
 				}
@@ -135,10 +129,11 @@ int decode(int code)
 	{
 		for (int r2 = 0; r2 < 2; r2++)
 		{
-			if (nodes[7][r1][r2].diff < diffcode)
+			nodePtr = &nodes[7][r1][r2];
+			if (nodePtr->diff < diffcode)
 			{
-				diffcode = nodes[7][r1][r2].diff;
-				possibleCode = nodes[7][r1][r2].code;
+				diffcode = nodePtr->diff;
+				possibleCode = nodePtr->code;
 			}
 		}
 	}
