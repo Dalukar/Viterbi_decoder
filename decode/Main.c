@@ -5,7 +5,7 @@
 #include <time.h>
 #include <string.h>
 
-unsigned long long int encodedData;
+unsigned long int encodedData;
 unsigned int result;
 int decode(int code); /*Функция декодирования*/
 int encode(int); /*Функция кодирования*/
@@ -36,9 +36,11 @@ int main(int argc, char* argv[])
 	t = clock() - t;
 	printf("100000x decode cycles time: %d clicks (%f seconds).\n",
 	(int)t, ((double)t) / CLOCKS_PER_SEC);
-	printf("Code: %s, Decoded: %s \n", decimal_binary(encode(result), 24), decimal_binary(result, 8));
+	printf("Input:\t%s\n", decimal_binary(encodedData, 24));
+	printf("Code:\t%s\tDecoded: %s \n", decimal_binary(encode(result), 24), decimal_binary(result, 8));
+	printf("Diff:\t%s\n", decimal_binary(encode(result) ^ encodedData, 24));
 	printf("Press any key to exit...\n");  
-	getch();
+	getchar();
 }
 
 int encode(int code)
