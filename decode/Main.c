@@ -5,7 +5,7 @@
 #include <time.h>
 #include <string.h>
 
-unsigned int encodedData;
+unsigned long long int encodedData;
 unsigned int result;
 int decode(int code); /*Функция декодирования*/
 int encode(int); /*Функция кодирования*/
@@ -15,7 +15,7 @@ int main(int argc, char* argv[])
 {
 	if(argc == 1)
 	{
-		char bincode[22];
+		char bincode[25];
 		printf("Enter input code:   ");
 		scanf("%s", &bincode[0]);
 		encodedData = binary_decimal(bincode);
@@ -36,7 +36,7 @@ int main(int argc, char* argv[])
 	t = clock() - t;
 	printf("100000x decode cycles time: %d clicks (%f seconds).\n",
 	(int)t, ((double)t) / CLOCKS_PER_SEC);
-	printf("Code: %s, Decoded: %s \n", decimal_binary(encode(result), 21), decimal_binary(result, 7));
+	printf("Code: %s, Decoded: %s \n", decimal_binary(encode(result), 24), decimal_binary(result, 8));
 	printf("Press any key to exit...\n");  
 	getch();
 }
@@ -52,9 +52,9 @@ int encode(int code)
 	int encoded = 0;
 	status.reg2 = 0;
 	status.reg1 = 0;
-	for (int j = 0; j < 7; j++)
+	for (int j = 0; j < 8; j++)
 	{
-		status.input = ((code)& 64) >> 6;
+		status.input = ((code)& 128) >> 7;
 		code <<= 1;
 		encoded = (encoded << 1) + status.reg1 ^ status.input;
 		encoded = (encoded << 1) + status.reg2 ^ status.input;
@@ -72,7 +72,7 @@ int decode(int code)
 		unsigned isActive : 1;
 		int diff;
 		int code;
-	}nodes[8][2][2];
+	}nodes[9][2][2];
 	/*Обнуляем узлы*/
 	memset(nodes, 0, sizeof(nodes));
 	nodes[0][0][0].isActive = 1;
@@ -83,7 +83,7 @@ int decode(int code)
 	struct node *nextNodePtr;
 	struct node *nodePtr;
 	/*Проход по 7 битам*/
-	for (int i = 0; i < 7; i++)
+	for (int i = 0; i < 8; i++)
 	{
 		/*Проход по состояниям регистров*/
 		for (int r1 = 0; r1 < 2; r1++)
@@ -103,7 +103,7 @@ int decode(int code)
 						possibleCode ^= (r2 ^ bit) << 1;
 						possibleCode ^= (r1 ^ bit);
 						/*Расчитываем разницу */
-						diffcode = possibleCode ^ (code >> (18 - i * 3));
+						diffcode = possibleCode ^ (code >> (21 - i * 3));
 						nextDiff = nodePtr->diff;
 						for (int k = 0; k < 3; k++)
 						{
@@ -124,12 +124,12 @@ int decode(int code)
 		}
 	}
 	/*Находим наименьшую разницу и возвращаем код*/
-	diffcode = 21;
+	diffcode = 24;
 	for (int r1 = 0; r1 < 2; r1++)
 	{
 		for (int r2 = 0; r2 < 2; r2++)
 		{
-			nodePtr = &nodes[7][r1][r2];
+			nodePtr = &nodes[8][r1][r2];
 			if (nodePtr->diff < diffcode)
 			{
 				diffcode = nodePtr->diff;
@@ -151,10 +151,10 @@ int binary_decimal(char *str)
 			printf("ERROR: Input must be in binary format.\n");
 			exit(0);
 		}
-		decimal += (str[i] - '0')*(int)pow(2, 20 - i);
+		decimal += (str[i] - '0')*(int)pow(2, 23 - i);
 		i++;
 	}
-	if(i != 21)
+	if(i != 24)
 	{
 		printf("ERROR: Input must be 21 digits in length.\n");
 		exit(0);
